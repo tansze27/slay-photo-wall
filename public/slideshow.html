@@ -2,71 +2,151 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>SLAY - Live Slideshow</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLAY - 1st Anniversary Live Slideshow</title>
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #050505; color: #fff; overflow: hidden; font-family: system-ui, sans-serif; height: 100vh; display: flex; justify-content: center; align-items: center; }
+
+    .slide-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .slide-img { max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 2px solid #800020; transition: opacity 0.8s ease; }
+
+    /* 留言/弹幕展示卡片 */
+    .comment-box {
+      position: absolute;
+      bottom: 60px;
+      background: rgba(128, 0, 32, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 16px 32px;
+      border-radius: 30px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: none;
+      max-width: 80vw;
+      text-align: center;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 播放速度控制条（浮动在左上角） */
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 18px;
+      border-radius: 20px;
+      z-index: 100;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0.3;
+      transition: opacity 0.3s;
+    }
+    .controls:hover { opacity: 1; }
+    .controls select { background: #222; color: #fff; border: 1px solid #555; padding: 4px 8px; border-radius: 6px; }
+  </style>
 </head>
-<body class="slideshow-body">
-  <div class="slideshow-container" id="slideshow">
-    <div class="badge-new" id="newBadge">NEW SLAY MOMENT</div>
-    <img class="slide-img active" id="slide1" src="" alt="">
-    <img class="slide-img" id="slide2" src="" alt="">
+<body>
+
+  <!-- 控制播放切换秒数 -->
+  <div class="controls">
+    <span>⏱️ 切换间隔:</span>
+    <select id="speedSelect" onchange="updateSpeed(this.value)">
+      <option value="3000">3 秒</option>
+      <option value="5000" selected>5 秒 (默认)</option>
+      <option value="8000">8 秒</option>
+      <option value="10000">10 秒</option>
+    </select>
+  </div>
+
+  <div class="slide-container">
+    <img id="displayImg" class="slide-img" src="" alt="SLAY Moment" style="display: none;">
+    <div id="commentBox" class="comment-box"></div>
   </div>
 
   <script>
     const socket = io();
-    let playlist = [];
+    const displayImg = document.getElementById('displayImg');
+    const commentBox = document.getElementById('commentBox');
+    
+    let photos = [];
     let currentIndex = 0;
-    let activeSlide = 1;
-    const slide1 = document.getElementById('slide1');
-    const slide2 = document.getElementById('slide2');
-    const newBadge = document.getElementById('newBadge');
+    let timer = null;
+    let currentInterval = 5000; // 默认 5 秒
 
-    // 预加载照片列表
-    async function init() {
-      const res = await fetch('/api/photos');
-      playlist = await res.json();
-      if (playlist.length > 0) {
-        slide1.src = playlist[0].url;
-      }
-      setInterval(nextSlide, 5000); // 5秒轮播一次
-    }
-
-    function nextSlide() {
-      if (playlist.length === 0) return;
+    function showPhoto(index) {
+      if (photos.length === 0) return;
+      const item = photos[index];
       
-      currentIndex = (currentIndex + 1) % playlist.length;
-      const nextUrl = playlist[currentIndex].url;
+      displayImg.style.opacity = '0';
+      setTimeout(() => {
+        displayImg.src = item.url;
+        displayImg.style.display = 'block';
+        displayImg.style.opacity = '1';
 
-      const currentImg = activeSlide === 1 ? slide1 : slide2;
-      const nextImg = activeSlide === 1 ? slide2 : slide1;
-
-      nextImg.src = nextUrl;
-      nextImg.classList.add('active');
-      currentImg.classList.remove('active');
-
-      activeSlide = activeSlide === 1 ? 2 : 1;
+        // 展示留言弹幕
+        if (item.comment) {
+          commentBox.innerText = `💬 "${item.comment}"`;
+          commentBox.style.display = 'block';
+        } else {
+          commentBox.style.display = 'none';
+        }
+      }, 300);
     }
 
-    // 收到新照片插播
+    function startSlideshow() {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        if (photos.length > 0) {
+          currentIndex = (currentIndex + 1) % photos.length;
+          showPhoto(currentIndex);
+        }
+      }, currentInterval);
+    }
+
+    function updateSpeed(newSpeed) {
+      currentInterval = parseInt(newSpeed);
+      startSlideshow();
+    }
+
+    // 初始加载照片
+    fetch('/api/photos')
+      .then(res => res.json())
+      .then(data => {
+        photos = data;
+        if (photos.length > 0) {
+          showPhoto(0);
+          startSlideshow();
+        }
+      });
+
+    // 收到新照片即刻插入大屏优先播放
     socket.on('new-photo', (photo) => {
-      playlist.unshift(photo);
+      photos.unshift(photo);
       currentIndex = 0;
-      
-      // 显示提示并立即插播
-      newBadge.style.display = 'block';
-      setTimeout(() => newBadge.style.display = 'none', 4000);
-
-      const nextImg = activeSlide === 1 ? slide2 : slide1;
-      const currentImg = activeSlide === 1 ? slide1 : slide2;
-
-      nextImg.src = photo.url;
-      nextImg.classList.add('active');
-      currentImg.classList.remove('active');
-      activeSlide = activeSlide === 1 ? 2 : 1;
+      showPhoto(0);
+      startSlideshow();
     });
 
-    init();
+    socket.on('photo-deleted', (deletedUrl) => {
+      photos = photos.filter(p => p.url !== deletedUrl);
+      if (photos.length === 0) {
+        displayImg.style.display = 'none';
+        commentBox.style.display = 'none';
+      } else {
+        currentIndex = currentIndex % photos.length;
+        showPhoto(currentIndex);
+      }
+    });
   </script>
 </body>
 </html>
