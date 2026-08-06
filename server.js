@@ -16,7 +16,6 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// 读取/保存数据（留言与点赞数）
 function loadData() {
   if (fs.existsSync(dataFile)) {
     try { return JSON.parse(fs.readFileSync(dataFile)); } catch(e) { return {}; }
@@ -42,7 +41,7 @@ const upload = multer({ storage: storage });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// 获取所有照片数据（含点赞量与时间）
+// 获取所有照片
 app.get('/api/photos', (req, res) => {
   fs.readdir(uploadDir, (err, files) => {
     if (err) return res.json([]);
@@ -52,13 +51,14 @@ app.get('/api/photos', (req, res) => {
       .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
       .map(file => {
         const itemData = db[file] || {};
-        const stat = fs.statSync(path.join(uploadDir, file));
+        const uploadTimestamp = itemData.timestamp || fs.statSync(path.join(uploadDir, file)).mtimeMs;
+        
         return {
           url: `/uploads/${file}`,
           comment: itemData.comment || '',
           likes: itemData.likes || 0,
-          time: stat.mtimeMs,
-          formattedTime: new Date(stat.mtimeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: uploadTimestamp,
+          formattedTime: new Date(uploadTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
       })
       .sort((a, b) => b.time - a.time);
@@ -67,7 +67,6 @@ app.get('/api/photos', (req, res) => {
   });
 });
 
-// 点赞接口
 app.post('/api/photos/like', (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ success: false });
@@ -79,28 +78,31 @@ app.post('/api/photos/like', (req, res) => {
   db[filename].likes = (db[filename].likes || 0) + 1;
 
   saveData(db);
-
-  // 实时向所有人与大屏广播最新点赞数据
   io.emit('like-updated', { url, likes: db[filename].likes });
   res.json({ success: true, likes: db[filename].likes });
 });
 
-// 上传接口
 app.post('/upload', upload.single('photo'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false });
 
     const comment = req.body.comment || '';
+    const now = Date.now();
     const db = loadData();
-    db[req.file.filename] = { comment, likes: 0 };
+    
+    db[req.file.filename] = { 
+      comment, 
+      likes: 0,
+      timestamp: now 
+    };
     saveData(db);
 
     const photoData = {
       url: `/uploads/${req.file.filename}`,
       comment: comment,
       likes: 0,
-      time: Date.now(),
-      formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: now,
+      formattedTime: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     io.emit('new-photo', photoData);
@@ -110,10 +112,9 @@ app.post('/upload', upload.single('photo'), (req, res) => {
   }
 });
 
-// 带密码删除接口
 app.post('/api/photos/delete', (req, res) => {
   const { url, password } = req.body;
-  const ADMIN_PASSWORD = '1234'; // 默认密码
+  const ADMIN_PASSWORD = '1234';
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ success: false, message: '密码错误，无权删除！' });
@@ -127,7 +128,6 @@ app.post('/api/photos/delete', (req, res) => {
   fs.unlink(filePath, (err) => {
     if (err) return res.status(500).json({ success: false });
     
-    // 清除 json 记录
     const db = loadData();
     delete db[filename];
     saveData(db);
