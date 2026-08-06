@@ -148,7 +148,7 @@
       if (!currentPhotoUrl) return;
 
       // 弹出密码输入框
-      const password = slayadmin('请输入管理员密码以删除照片：');
+      const password = prompt('请输入管理员密码以删除照片：');
       
       // 如果用户点击了“取消”或没输入
       if (password === null) return; 
@@ -158,7 +158,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           url: currentPhotoUrl,
-          password: password 
+          password: slayadmin 
         })
       });
 
