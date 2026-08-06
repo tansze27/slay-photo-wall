@@ -4,34 +4,189 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SLAY DANCE STUDIO - 1st Anniversary</title>
-  <link rel="stylesheet" href="style.css">
   <style>
-    /* 留言输入框专属美化样式 */
-    .comment-input-container {
-      margin: 15px 0;
-      width: 100%;
-    }
-    .comment-input-container input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: #f8fafc;
-      font-size: 14px;
-      color: #334155;
+    * {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶部导航栏 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: #ffffff;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #800020;
+      letter-spacing: 1.5px;
+    }
+
+    .nav-links a {
+      color: #1d1d1f;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #800020;
+    }
+
+    /* 居中容器与白卡片 */
+    .container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 460px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 粉色标签 */
+    .badge {
+      display: inline-block;
+      background: #d8a7b1;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #1d1d1f;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #8e8e93;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .desc {
+      font-size: 13px;
+      color: #6e6e73;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* 上传区域与图标 */
+    .upload-zone {
+      cursor: pointer;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .upload-icon {
+      font-size: 42px;
+      margin-bottom: 8px;
+      transition: transform 0.2s;
+    }
+
+    .upload-zone:hover .upload-icon {
+      transform: scale(1.1);
+    }
+
+    .upload-hint {
+      font-size: 13px;
+      color: #8e8e93;
+    }
+
+    /* 弹幕留言框 */
+    .comment-container {
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .comment-input {
+      width: 100%;
+      padding: 14px 20px;
+      border: 1px solid #e5e5ea;
+      border-radius: 20px;
+      background: #f9f9fb;
+      font-size: 13px;
+      color: #1d1d1f;
+      text-align: center;
       outline: none;
       transition: all 0.2s ease;
-      text-align: center;
     }
-    .comment-input-container input:focus {
+
+    .comment-input:focus {
       border-color: #800020;
       background: #ffffff;
-      box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.1);
+      box-shadow: 0 0 0 4px rgba(128, 0, 32, 0.08);
+    }
+
+    /* 发布大按钮 */
+    .btn-submit {
+      width: 100%;
+      background: #800020;
+      color: #ffffff;
+      border: none;
+      padding: 16px;
+      border-radius: 20px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-submit:hover {
+      background: #600018;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.98);
+    }
+
+    .status-msg {
+      margin-top: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #800020;
     }
   </style>
 </head>
 <body>
+
   <header>
     <div class="brand-title">SLAY DANCE</div>
     <nav class="nav-links">
@@ -50,16 +205,15 @@
         一起 SLAY THE STAGE 🔥
       </p>
 
-      <form id="uploadForm">
+      <form id="uploadForm" style="width: 100%;">
         <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
           <input type="file" id="fileInput" accept="image/*" style="display: none;">
           <div class="upload-icon">📸</div>
-          <p id="uploadText" style="margin-top: 5px; font-size: 13px; color: #64748b;">点击选择或拍摄照片</p>
+          <p id="uploadText" class="upload-hint">点击选择或拍摄照片</p>
         </div>
 
-        <!-- 仅新增留言框 -->
-        <div class="comment-input-container">
-          <input type="text" id="commentInput" placeholder="写一句弹幕留言/祝福（选填）...">
+        <div class="comment-container">
+          <input type="text" id="commentInput" class="comment-input" placeholder="写一句弹幕留言/祝福（选填）...">
         </div>
 
         <button type="submit" class="btn-submit" id="submitBtn">发布到大屏</button>
@@ -78,6 +232,7 @@
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length > 0) {
         uploadText.innerText = `已选择: ${fileInput.files[0].name}`;
+        uploadText.style.color = '#1d1d1f';
       }
     });
 
@@ -101,6 +256,7 @@
           statusMessage.innerText = '🎉 上传成功！即刻登上大屏！';
           form.reset();
           uploadText.innerText = '点击选择或拍摄照片';
+          uploadText.style.color = '#8e8e93';
         } else {
           statusMessage.innerText = '上传失败，请重试';
         }

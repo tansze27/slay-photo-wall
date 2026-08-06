@@ -84,15 +84,28 @@ app.post('/upload', upload.single('photo'), (req, res) => {
   }
 });
 
+// API：删除照片接口（带密码验证）
 app.post('/api/photos/delete', (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ success: false });
+  const { url, password } = req.body;
+
+  // 设置你的管理员密码（可在此随意修改）
+  const ADMIN_PASSWORD = '1234';
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: '密码错误，无权删除！' });
+  }
+
+  if (!url) return res.status(400).json({ success: false, message: '无效的照片路径' });
 
   const filename = path.basename(url);
   const filePath = path.join(uploadDir, filename);
 
   fs.unlink(filePath, (err) => {
-    if (err) return res.status(500).json({ success: false });
+    if (err) {
+      console.error('删除文件失败:', err);
+      return res.status(500).json({ success: false, message: '删除文件失败' });
+    }
+    // 即时通知所有人与大屏移除该照片
     io.emit('photo-deleted', url);
     res.json({ success: true });
   });

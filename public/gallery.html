@@ -143,20 +143,30 @@
     });
 
     // 删除接口提交
+    // 删除接口提交（带密码提示）
     deleteBtn.addEventListener('click', async () => {
       if (!currentPhotoUrl) return;
-      if (confirm('确定要删除这张照片吗？删除后大屏也将同步同步移除。')) {
-        const res = await fetch('/api/photos/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: currentPhotoUrl })
-        });
-        const data = await res.json();
-        if (data.success) {
-          closeModal();
-        } else {
-          alert('删除失败');
-        }
+
+      // 弹出密码输入框
+      const password = slayadmin('请输入管理员密码以删除照片：');
+      
+      // 如果用户点击了“取消”或没输入
+      if (password === null) return; 
+
+      const res = await fetch('/api/photos/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          url: currentPhotoUrl,
+          password: password 
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        closeModal();
+      } else {
+        alert(data.message || '密码错误！');
       }
     });
   </script>
