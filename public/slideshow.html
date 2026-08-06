@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SLAY - 1st Anniversary Live Slideshow</title>
+  <title>SLAY - Live Slideshow</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
@@ -19,7 +19,6 @@
       position: relative;
     }
 
-    /* 动态 Canvas 动画背景 */
     #bgCanvas {
       position: absolute;
       inset: 0;
@@ -43,7 +42,7 @@
     .polaroid-frame {
       position: absolute;
       background: #ffffff;
-      padding: 16px 16px 65px 16px;
+      padding: 16px 16px 70px 16px;
       border-radius: 8px;
       box-shadow: 0 25px 60px rgba(0,0,0,0.85);
       display: flex;
@@ -69,57 +68,69 @@
       display: block;
     }
 
+    /* 拍立得底栏区域 */
     .polaroid-footer {
       position: absolute;
-      bottom: 15px;
+      bottom: 12px;
       left: 16px;
       right: 16px;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       color: #1d1d1f;
       font-weight: 700;
     }
 
-    .polaroid-logo { font-size: 14px; letter-spacing: 1px; color: #800020; white-space: nowrap; }
+    .polaroid-logo { 
+      font-size: 13px; 
+      letter-spacing: 1.5px; 
+      color: #800020; 
+      white-space: nowrap; 
+      flex-shrink: 0;
+    }
     
     .polaroid-comment {
-      font-size: 14px;
-      color: #333;
+      font-size: 13px;
+      color: #222;
       text-align: center;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       font-weight: 600;
-      padding: 0 5px;
+      flex: 1;
+      word-break: break-word;
+      line-height: 1.2;
+      padding: 0 4px;
     }
 
-    .polaroid-time { font-size: 12px; color: #888; white-space: nowrap; }
+    .polaroid-time { 
+      font-size: 11px; 
+      color: #888; 
+      white-space: nowrap; 
+      flex-shrink: 0;
+    }
 
-    /* 飘屏弹幕 */
+    /* 实时全屏飘屏弹幕（z-index 提升至 9999，确保在图片上方飘过） */
     .danmaku-container {
       position: fixed;
       inset: 0;
       pointer-events: none;
-      z-index: 100;
+      z-index: 9999;
       overflow: hidden;
     }
 
     .danmaku-item {
       position: absolute;
       white-space: nowrap;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
       color: #ffffff;
       text-shadow: 0 2px 10px rgba(128, 0, 32, 0.9), 0 0 20px rgba(255, 71, 87, 0.6);
-      background: rgba(128, 0, 32, 0.7);
+      background: rgba(128, 0, 32, 0.85);
       backdrop-filter: blur(8px);
-      padding: 8px 24px;
+      padding: 8px 22px;
       border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-      animation: flyLeft 9s linear forwards;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      animation: flyLeft 8s linear forwards;
     }
 
     @keyframes flyLeft {
@@ -153,7 +164,7 @@
       inset: 0;
       background: rgba(0,0,0,0.85);
       backdrop-filter: blur(8px);
-      z-index: 1000;
+      z-index: 10000;
       justify-content: center;
       align-items: center;
       flex-direction: column;
@@ -180,7 +191,7 @@
 </head>
 <body>
 
-  <!-- 动态动画背景 -->
+  <!-- Canvas 背景粒子 -->
   <canvas id="bgCanvas"></canvas>
 
   <div class="controls">
@@ -202,13 +213,14 @@
     <p>扫码立即上传现场写真登屏 🔥</p>
   </div>
 
+  <!-- 放置在图片上层的弹幕容器 -->
   <div class="danmaku-container" id="danmakuContainer"></div>
 
   <div class="slide-stage">
     <div id="frameA" class="polaroid-frame">
       <img id="imgA" class="polaroid-img" src="">
       <div class="polaroid-footer">
-        <span class="polaroid-logo">SLAY 1st Anniversary</span>
+        <span class="polaroid-logo">SLAY</span>
         <span id="commentA" class="polaroid-comment"></span>
         <span id="timeA" class="polaroid-time">--:--</span>
       </div>
@@ -217,7 +229,7 @@
     <div id="frameB" class="polaroid-frame">
       <img id="imgB" class="polaroid-img" src="">
       <div class="polaroid-footer">
-        <span class="polaroid-logo">SLAY 1st Anniversary</span>
+        <span class="polaroid-logo">SLAY</span>
         <span id="commentB" class="polaroid-comment"></span>
         <span id="timeB" class="polaroid-time">--:--</span>
       </div>
@@ -225,7 +237,7 @@
   </div>
 
   <script>
-    // --- Canvas 粒子流光动画脚本 ---
+    // --- 动态粒子背景 ---
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -238,9 +250,7 @@
     resizeCanvas();
 
     class Particle {
-      constructor() {
-        this.reset();
-      }
+      constructor() { this.reset(); }
       reset() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
@@ -248,7 +258,6 @@
         this.speedY = Math.random() * 0.8 + 0.2;
         this.speedX = (Math.random() - 0.5) * 0.5;
         this.opacity = Math.random() * 0.5 + 0.2;
-        // 酒红与烫金梦幻微光粒子
         this.color = Math.random() > 0.5 ? 'rgba(128, 0, 32, ' : 'rgba(212, 175, 55, ';
       }
       update() {
@@ -264,21 +273,16 @@
       }
     }
 
-    for (let i = 0; i < 70; i++) {
-      particles.push(new Particle());
-    }
+    for (let i = 0; i < 70; i++) particles.push(new Particle());
 
     function animateBG() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        p.update();
-        p.draw();
-      });
+      particles.forEach(p => { p.update(); p.draw(); });
       requestAnimationFrame(animateBG);
     }
     animateBG();
 
-    // --- 轮播逻辑 ---
+    // --- 逻辑处理 ---
     const socket = io();
     const frameA = document.getElementById('frameA');
     const frameB = document.getElementById('frameB');
@@ -302,23 +306,24 @@
       else qrModal.classList.remove('active');
     }
 
-    function createDanmaku(text) {
+    function sendDanmaku(text) {
       if (!text) return;
       const el = document.createElement('div');
       el.className = 'danmaku-item';
       el.innerText = `💬 ${text}`;
-      const topPos = Math.floor(Math.random() * 65) + 10; 
+      
+      const topPos = Math.floor(Math.random() * 60) + 12; 
       el.style.top = topPos + 'vh';
+      
       danmakuContainer.appendChild(el);
-      setTimeout(() => { el.remove(); }, 9000);
+      setTimeout(() => { el.remove(); }, 8000);
     }
 
     function checkFireworks(comment) {
       if (!comment) return;
       const keywords = ['生日快乐', 'slay', '周年', '快乐', '1st', '炸场'];
-      const hasKeyword = keywords.some(kw => comment.toLowerCase().includes(kw));
-      if (hasKeyword) {
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      if (keywords.some(kw => comment.toLowerCase().includes(kw))) {
+        confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
       }
     }
 
@@ -345,11 +350,6 @@
       currentFrame.classList.remove('active');
 
       activeSlot = activeSlot === 'A' ? 'B' : 'A';
-
-      if (item.comment) {
-        createDanmaku(item.comment);
-        checkFireworks(item.comment);
-      }
     }
 
     function startSlideshow() {
@@ -381,6 +381,11 @@
       currentIndex = 0;
       showPhoto(0);
       startSlideshow();
+
+      if (photo.comment) {
+        sendDanmaku(photo.comment);
+        checkFireworks(photo.comment);
+      }
     });
 
     socket.on('photo-deleted', (url) => {
