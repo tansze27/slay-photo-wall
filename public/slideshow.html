@@ -36,48 +36,71 @@
       justify-content: center;
       align-items: center;
       z-index: 2;
+      perspective: 1000px;
     }
 
-    /* 拍立得复古相框 */
+    /* 拍立得复古相框通用基类 */
     .polaroid-frame {
       position: absolute;
       background: #ffffff;
-      padding: 16px 16px 75px 16px;
+      padding: 14px 14px 68px 14px;
       border-radius: 8px;
-      box-shadow: 0 25px 60px rgba(0,0,0,0.85);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
       display: flex;
       flex-direction: column;
       align-items: center;
-      opacity: 0;
-      transition: opacity 1.2s ease, transform 1.2s ease;
-      will-change: opacity, transform;
+      transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+      will-change: transform, opacity;
       max-width: 85vw;
       max-height: 85vh;
     }
 
-    .polaroid-frame.active {
-      opacity: 1;
-      z-index: 2;
-    }
-
     .polaroid-img {
       max-width: 80vw;
-      max-height: 65vh;
+      max-height: 60vh;
       object-fit: contain;
       border-radius: 4px;
       display: block;
     }
 
+    /* 三个位置的布局：主屏（Center）、左侧（Prev）、右侧（Next） */
+    .polaroid-frame.pos-center {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+      z-index: 10;
+      filter: brightness(1);
+    }
+
+    .polaroid-frame.pos-prev {
+      transform: translateX(-38vw) scale(0.68) rotateY(8deg);
+      opacity: 0.55;
+      z-index: 5;
+      filter: brightness(0.7);
+    }
+
+    .polaroid-frame.pos-next {
+      transform: translateX(38vw) scale(0.68) rotateY(-8deg);
+      opacity: 0.55;
+      z-index: 5;
+      filter: brightness(0.7);
+    }
+
+    .polaroid-frame.pos-hidden {
+      transform: translateX(0) scale(0.4);
+      opacity: 0;
+      z-index: 1;
+    }
+
     /* 拍立得底栏区域 */
     .polaroid-footer {
       position: absolute;
-      bottom: 14px;
-      left: 16px;
-      right: 16px;
+      bottom: 12px;
+      left: 14px;
+      right: 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       color: #1d1d1f;
     }
 
@@ -90,16 +113,15 @@
       flex-shrink: 0;
     }
     
-    /* 放大 Comment 字体并加粗 */
     .polaroid-comment {
-      font-size: 16px;
+      font-size: 15px;
       color: #111111;
       text-align: center;
       font-weight: 700;
       flex: 1;
       word-break: break-word;
       line-height: 1.2;
-      padding: 0 6px;
+      padding: 0 4px;
     }
 
     .polaroid-time { 
@@ -110,7 +132,7 @@
       flex-shrink: 0;
     }
 
-    /* 实时全屏飘屏弹幕（置顶在图片上方） */
+    /* 实时全屏飘屏弹幕 */
     .danmaku-container {
       position: fixed;
       inset: 0;
@@ -140,7 +162,7 @@
       to { transform: translateX(-100%); }
     }
 
-    /* 右下角常驻扫码框 */
+    /* 右下角常驻 QR Code */
     .qr-corner-card {
       position: fixed;
       bottom: 24px;
@@ -159,14 +181,14 @@
     }
 
     .qr-corner-card img {
-      width: 110px;
-      height: 110px;
+      width: 100px;
+      height: 100px;
       border-radius: 8px;
       display: block;
     }
 
     .qr-corner-card span {
-      font-size: 12px;
+      font-size: 11px;
       color: #800020;
       font-weight: 800;
       letter-spacing: 0.5px;
@@ -190,7 +212,6 @@
 </head>
 <body>
 
-  <!-- Canvas 背景粒子 -->
   <canvas id="bgCanvas"></canvas>
 
   <div class="controls">
@@ -202,37 +223,45 @@
     </select>
   </div>
 
-  <!-- 常驻右下角 QR Code -->
   <div class="qr-corner-card">
     <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://slay-photo-wall.onrender.com" alt="Scan to Upload">
     <span>扫码上传登屏 🔥</span>
   </div>
 
-  <!-- 飘屏弹幕容器 -->
   <div class="danmaku-container" id="danmakuContainer"></div>
 
+  <!-- 3D 轮播舞台：左（Prev）、中（Center）、右（Next） -->
   <div class="slide-stage">
-    <div id="frameA" class="polaroid-frame">
-      <img id="imgA" class="polaroid-img" src="">
+    <div id="frameLeft" class="polaroid-frame pos-prev">
+      <img id="imgLeft" class="polaroid-img" src="">
       <div class="polaroid-footer">
         <span class="polaroid-logo">SLAY</span>
-        <span id="commentA" class="polaroid-comment"></span>
-        <span id="timeA" class="polaroid-time">--:--</span>
+        <span id="commentLeft" class="polaroid-comment"></span>
+        <span id="timeLeft" class="polaroid-time">--:--</span>
       </div>
     </div>
 
-    <div id="frameB" class="polaroid-frame">
-      <img id="imgB" class="polaroid-img" src="">
+    <div id="frameCenter" class="polaroid-frame pos-center">
+      <img id="imgCenter" class="polaroid-img" src="">
       <div class="polaroid-footer">
         <span class="polaroid-logo">SLAY</span>
-        <span id="commentB" class="polaroid-comment"></span>
-        <span id="timeB" class="polaroid-time">--:--</span>
+        <span id="commentCenter" class="polaroid-comment"></span>
+        <span id="timeCenter" class="polaroid-time">--:--</span>
+      </div>
+    </div>
+
+    <div id="frameRight" class="polaroid-frame pos-next">
+      <img id="imgRight" class="polaroid-img" src="">
+      <div class="polaroid-footer">
+        <span class="polaroid-logo">SLAY</span>
+        <span id="commentRight" class="polaroid-comment"></span>
+        <span id="timeRight" class="polaroid-time">--:--</span>
       </div>
     </div>
   </div>
 
   <script>
-    // --- 动态粒子背景 ---
+    // --- Canvas 背景粒子 ---
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -277,34 +306,28 @@
     }
     animateBG();
 
-    // --- 轮播逻辑 ---
+    // --- 3D 左右排布逻辑 ---
     const socket = io();
-    const frameA = document.getElementById('frameA');
-    const frameB = document.getElementById('frameB');
-    const imgA = document.getElementById('imgA');
-    const imgB = document.getElementById('imgB');
-    const commentA = document.getElementById('commentA');
-    const commentB = document.getElementById('commentB');
-    const timeA = document.getElementById('timeA');
-    const timeB = document.getElementById('timeB');
     const danmakuContainer = document.getElementById('danmakuContainer');
+
+    const elements = {
+      left: { img: document.getElementById('imgLeft'), comment: document.getElementById('commentLeft'), time: document.getElementById('timeLeft'), frame: document.getElementById('frameLeft') },
+      center: { img: document.getElementById('imgCenter'), comment: document.getElementById('commentCenter'), time: document.getElementById('timeCenter'), frame: document.getElementById('frameCenter') },
+      right: { img: document.getElementById('imgRight'), comment: document.getElementById('commentRight'), time: document.getElementById('timeRight'), frame: document.getElementById('frameRight') }
+    };
 
     let photos = [];
     let currentIndex = 0;
     let timer = null;
     let currentInterval = 5000;
-    let activeSlot = 'A';
 
-    // 飘屏弹幕触发函数
     function sendDanmaku(text) {
       if (!text) return;
       const el = document.createElement('div');
       el.className = 'danmaku-item';
       el.innerText = `💬 ${text}`;
-      
-      const topPos = Math.floor(Math.random() * 60) + 12; 
+      const topPos = Math.floor(Math.random() * 55) + 12; 
       el.style.top = topPos + 'vh';
-      
       danmakuContainer.appendChild(el);
       setTimeout(() => { el.remove(); }, 8000);
     }
@@ -317,31 +340,42 @@
       }
     }
 
-    function showPhoto(index) {
-      if (photos.length === 0) return;
-      const item = photos[index];
-      
-      const currentFrame = activeSlot === 'A' ? frameA : frameB;
-      const nextFrame = activeSlot === 'A' ? frameB : frameA;
-      const nextImg = activeSlot === 'A' ? imgB : imgA;
-      const nextComment = activeSlot === 'A' ? commentB : commentA;
-      const nextTime = activeSlot === 'A' ? timeB : timeA;
-
-      nextImg.src = item.url;
-      nextTime.innerText = item.formattedTime || '';
-      
-      if (item.comment) {
-        nextComment.innerText = `💬 "${item.comment}" ${item.likes ? '❤️' + item.likes : ''}`;
-        // 切换照片时同步发射飘屏
-        sendDanmaku(item.comment);
-      } else {
-        nextComment.innerText = item.likes ? `❤️ ${item.likes}` : '';
+    function fillFrameData(target, photoItem) {
+      if (!photoItem) {
+        target.frame.style.visibility = 'hidden';
+        return;
       }
+      target.frame.style.visibility = 'visible';
+      target.img.src = photoItem.url;
+      target.time.innerText = photoItem.formattedTime || '';
+      
+      if (photoItem.comment) {
+        target.comment.innerText = `💬 "${photoItem.comment}" ${photoItem.likes ? '❤️' + photoItem.likes : ''}`;
+      } else {
+        target.comment.innerText = photoItem.likes ? `❤️ ${photoItem.likes}` : '';
+      }
+    }
 
-      nextFrame.classList.add('active');
-      currentFrame.classList.remove('active');
+    function updateCarousel() {
+      if (photos.length === 0) return;
 
-      activeSlot = activeSlot === 'A' ? 'B' : 'A';
+      const total = photos.length;
+      
+      // 计算前一张 (Prev) 和 后一张 (Next) 的索引
+      const prevIndex = (currentIndex - 1 + total) % total;
+      const nextIndex = (currentIndex + 1) % total;
+
+      const centerPhoto = photos[currentIndex];
+
+      // 给三个框装载数据（多于1张时才显示两侧卡片）
+      fillFrameData(elements.center, centerPhoto);
+      fillFrameData(elements.left, total > 1 ? photos[prevIndex] : null);
+      fillFrameData(elements.right, total > 2 ? photos[nextIndex] : null);
+
+      // 触发主屏弹幕与烟花
+      if (centerPhoto && centerPhoto.comment) {
+        sendDanmaku(centerPhoto.comment);
+      }
     }
 
     function startSlideshow() {
@@ -349,7 +383,7 @@
       timer = setInterval(() => {
         if (photos.length > 0) {
           currentIndex = (currentIndex + 1) % photos.length;
-          showPhoto(currentIndex);
+          updateCarousel();
         }
       }, currentInterval);
     }
@@ -359,22 +393,15 @@
     fetch('/api/photos').then(r => r.json()).then(data => {
       photos = data;
       if (photos.length > 0) {
-        imgA.src = photos[0].url;
-        timeA.innerText = photos[0].formattedTime || '';
-        if (photos[0].comment) {
-          commentA.innerText = `💬 "${photos[0].comment}"`;
-          sendDanmaku(photos[0].comment);
-        }
-        frameA.classList.add('active');
+        updateCarousel();
         startSlideshow();
       }
     });
 
-    // 收到新照片即刻登屏，并弹幕横穿
     socket.on('new-photo', (photo) => {
       photos.unshift(photo);
       currentIndex = 0;
-      showPhoto(0);
+      updateCarousel();
       startSlideshow();
 
       if (photo.comment) {
@@ -384,7 +411,10 @@
 
     socket.on('photo-deleted', (url) => {
       photos = photos.filter(p => p.url !== url);
-      if(photos.length > 0) { showPhoto(0); }
+      if (photos.length > 0) {
+        currentIndex = currentIndex % photos.length;
+        updateCarousel();
+      }
     });
 
     socket.on('like-updated', ({ url, likes }) => {
