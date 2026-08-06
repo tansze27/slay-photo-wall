@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SLAY DANCE STUDIO - 1st Anniversary</title>
-  <link rel="icon" type="image/png" href="/SLAY LOGO.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <style>
     * {
       box-sizing: border-box;
@@ -21,7 +21,6 @@
       flex-direction: column;
     }
 
-    /* 顶部导航 */
     header {
       display: flex;
       justify-content: space-between;
@@ -45,16 +44,14 @@
       font-weight: 500;
     }
 
-    /* 容器：取消强制垂直居中，靠上靠紧 header */
     .container {
       flex: 1;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 20px 16px 20px 16px;
+      padding: 0px 16px 20px 16px;
     }
 
-    /* 白卡片：极大压缩上下内边距 */
     .card {
       background: #ffffff;
       border-radius: 28px;
@@ -65,7 +62,6 @@
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
     }
 
-    /* 紧凑版内部上下元素间距 */
     .badge {
       display: inline-block;
       background: #d8a7b1;
@@ -75,7 +71,7 @@
       padding: 5px 14px;
       border-radius: 20px;
       letter-spacing: 1px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
 
     .welcome-title {
@@ -100,9 +96,23 @@
       margin-bottom: 14px;
     }
 
+    /* 相机上传区域：增加轻微灰色虚线点击框 */
     .upload-zone {
       cursor: pointer;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      border: 2px dashed #e5e5ea;
+      background: #fafafa;
+      border-radius: 18px;
+      padding: 14px 10px;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .upload-zone:hover {
+      border-color: #800020;
+      background: #fdf6f7;
     }
 
     .upload-icon {
@@ -113,6 +123,7 @@
     .upload-hint {
       font-size: 12px;
       color: #8e8e93;
+      font-weight: 500;
     }
 
     .comment-container {
@@ -214,7 +225,8 @@
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length > 0) {
         uploadText.innerText = `已选择: ${fileInput.files[0].name}`;
-        uploadText.style.color = '#1d1d1f';
+        uploadText.style.color = '#800020';
+        uploadText.style.fontWeight = 'bold';
       }
     });
 
@@ -239,6 +251,7 @@
           form.reset();
           uploadText.innerText = '点击选择或拍摄照片';
           uploadText.style.color = '#8e8e93';
+          uploadText.style.fontWeight = '500';
         } else {
           statusMessage.innerText = '上传失败，请重试';
         }
