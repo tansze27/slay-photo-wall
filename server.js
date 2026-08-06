@@ -89,7 +89,7 @@ app.post('/api/photos/delete', (req, res) => {
   const { url, password } = req.body;
 
   // 设置你的管理员密码（可在此随意修改）
-  const ADMIN_PASSWORD = '1234';
+  const ADMIN_PASSWORD = 'Slayadmin';
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ success: false, message: '密码错误，无权删除！' });
