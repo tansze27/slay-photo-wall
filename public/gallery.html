@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SLAY - Gallery</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    /* 预览弹窗 Modal 样式 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    .modal-img {
+      max-width: 90%;
+      max-height: 70vh;
+      border-radius: 16px;
+      border: 2px solid var(--burgundy);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .modal-actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .btn-delete {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      width: 50%;
+      cursor: pointer;
+    }
+
+    .btn-close {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      width: 50%;
+      cursor: pointer;
+    }
+
+    .gallery-item {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand-title">SLAY WALL</div>
+    <nav class="nav-links">
+      <a href="/">继续上传</a>
+      <a href="/download.html">下载照片</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <!-- 点击大图弹窗 Modal -->
+  <div class="modal" id="photoModal">
+    <img class="modal-img" id="modalImg" src="" alt="SLAY Moment">
+    <div class="modal-actions">
+      <button class="btn-delete" id="deleteBtn">🗑️ 删除照片</button>
+      <button class="btn-close" onclick="closeModal()">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const galleryGrid = document.getElementById('galleryGrid');
+    const modal = document.getElementById('photoModal');
+    const modalImg = document.getElementById('modalImg');
+    const deleteBtn = document.getElementById('deleteBtn');
+    let currentPhotoUrl = '';
+
+    function createPhotoItem(url) {
+      const div = document.createElement('div');
+      div.className = 'gallery-item';
+      div.dataset.url = url;
+      div.innerHTML = `<img src="${url}" loading="lazy" alt="SLAY Moment">`;
+      
+      // 点击放大并弹出操作选项
+      div.addEventListener('click', () => {
+        currentPhotoUrl = url;
+        modalImg.src = url;
+        modal.style.display = 'flex';
+      });
+      return div;
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      currentPhotoUrl = '';
+    }
+
+    // 初始加载历史照片
+    fetch('/api/photos')
+      .then(res => res.json())
+      .then(photos => {
+        photos.forEach(photo => {
+          galleryGrid.appendChild(createPhotoItem(photo.url));
+        });
+      });
+
+    // 实时更新
+    socket.on('new-photo', (photo) => {
+      const newItem = createPhotoItem(photo.url);
+      galleryGrid.insertBefore(newItem, galleryGrid.firstChild);
+    });
+
+    // 实时同步删除
+    socket.on('photo-deleted', (deletedUrl) => {
+      const items = Array.from(document.querySelectorAll('.gallery-item'));
+      items.forEach(item => {
+        if (item.dataset.url === deletedUrl) {
+          item.remove();
+        }
+      });
+    });
+
+    // 删除接口提交
+    deleteBtn.addEventListener('click', async () => {
+      if (!currentPhotoUrl) return;
+      if (confirm('确定要删除这张照片吗？删除后大屏也将同步同步移除。')) {
+        const res = await fetch('/api/photos/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: currentPhotoUrl })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeModal();
+        } else {
+          alert('删除失败');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

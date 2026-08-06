@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLAY - Memorial Archive</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand-title">SLAY ARCHIVE</div>
+  </header>
+
+  <div class="container">
+    <h2 style="margin-bottom: 8px;">纪念照片下载</h2>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">长按或点击下方图片即可保存原图到手机</p>
+    
+    <div class="gallery-grid" id="downloadGrid"></div>
+  </div>
+
+  <script>
+    fetch('/api/photos')
+      .then(res => res.json())
+      .then(photos => {
+        const grid = document.getElementById('downloadGrid');
+        photos.forEach(photo => {
+          const a = document.createElement('a');
+          a.href = photo.url;
+          a.download = photo.url.split('/').pop();
+          a.innerHTML = `<div class="gallery-item"><img src="${photo.url}"></div>`;
+          grid.appendChild(a);
+        });
+      });
+  </script>
+</body>
+</html>

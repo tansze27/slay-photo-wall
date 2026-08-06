@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>SLAY - Live Slideshow</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="slideshow-body">
+  <div class="slideshow-container" id="slideshow">
+    <div class="badge-new" id="newBadge">NEW SLAY MOMENT</div>
+    <img class="slide-img active" id="slide1" src="" alt="">
+    <img class="slide-img" id="slide2" src="" alt="">
+  </div>
+
+  <script>
+    const socket = io();
+    let playlist = [];
+    let currentIndex = 0;
+    let activeSlide = 1;
+    const slide1 = document.getElementById('slide1');
+    const slide2 = document.getElementById('slide2');
+    const newBadge = document.getElementById('newBadge');
+
+    // 预加载照片列表
+    async function init() {
+      const res = await fetch('/api/photos');
+      playlist = await res.json();
+      if (playlist.length > 0) {
+        slide1.src = playlist[0].url;
+      }
+      setInterval(nextSlide, 5000); // 5秒轮播一次
+    }
+
+    function nextSlide() {
+      if (playlist.length === 0) return;
+      
+      currentIndex = (currentIndex + 1) % playlist.length;
+      const nextUrl = playlist[currentIndex].url;
+
+      const currentImg = activeSlide === 1 ? slide1 : slide2;
+      const nextImg = activeSlide === 1 ? slide2 : slide1;
+
+      nextImg.src = nextUrl;
+      nextImg.classList.add('active');
+      currentImg.classList.remove('active');
+
+      activeSlide = activeSlide === 1 ? 2 : 1;
+    }
+
+    // 收到新照片插播
+    socket.on('new-photo', (photo) => {
+      playlist.unshift(photo);
+      currentIndex = 0;
+      
+      // 显示提示并立即插播
+      newBadge.style.display = 'block';
+      setTimeout(() => newBadge.style.display = 'none', 4000);
+
+      const nextImg = activeSlide === 1 ? slide2 : slide1;
+      const currentImg = activeSlide === 1 ? slide1 : slide2;
+
+      nextImg.src = photo.url;
+      nextImg.classList.add('active');
+      currentImg.classList.remove('active');
+      activeSlide = activeSlide === 1 ? 2 : 1;
+    });
+
+    init();
+  </script>
+</body>
+</html>

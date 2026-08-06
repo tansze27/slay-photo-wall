@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SLAY DANCE STUDIO - 1st Anniversary</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <!-- Logo 区域：将你的 logo 图片命名为 logo.png 放在 public 文件夹内即可 -->
+    <div class="brand-logo-container">
+      <img src="logo.png" alt="SLAY DANCE STUDIO" class="brand-logo" onerror="this.style.display='none'; document.getElementById('brand-text').style.display='block';">
+      <span class="brand-title" id="brand-text" style="display: none;">SLAY DANCE</span>
+    </div>
+    <nav class="nav-links">
+      <a href="/gallery.html">进入照片墙 →</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="upload-card">
+      <div class="hero-badge">1ST ANNIVERSARY PARTY</div>
+      
+      <div class="studio-name">SLAY DANCE STUDIO</div>
+      <div class="anniversary-title">1周年现场限定互动</div>
+
+      <div class="dance-quote">
+        <p class="eng-quote">“Capture the moment you want to let us know”</p>
+        <p>把你的炸场瞬间、高光表情包、合照上传大屏<br>一起 SLAY THE STAGE 🔥</p>
+      </div>
+
+      <form id="uploadForm">
+        <input type="file" id="photoInput" class="file-input" accept="image/*" capture="environment">
+        
+        <!-- 强化版上传框 -->
+        <div class="upload-box" onclick="document.getElementById('photoInput').click()">
+          <div class="upload-pulse-tag">CLICK HERE TO UPLOAD</div>
+          <span class="upload-icon">📸</span>
+          <div class="upload-hint">点击此处拍照 / 选择照片</div>
+          <div class="upload-subhint">Share your best slay moment with us!</div>
+        </div>
+
+        <div id="preview-container">
+          <img id="preview-img" src="" alt="预览">
+          <button type="submit" class="btn btn-burgundy" id="submitBtn">🔥 上传霸屏 / SUBMIT</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const photoInput = document.getElementById('photoInput');
+    const previewContainer = document.getElementById('preview-container');
+    const previewImg = document.getElementById('preview-img');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    photoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          previewImg.src = evt.target.result;
+          previewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    uploadForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const file = photoInput.files[0];
+      if (!file) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = '正在上传到大屏...';
+
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          alert('🔥 你的高光时刻已发送至现场大屏！');
+          window.location.href = '/gallery.html';
+        } else {
+          alert('上传失败：' + data.message);
+        }
+      } catch (err) {
+        alert('网络错误，请稍后重试');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = '🔥 上传霸屏 / SUBMIT';
+      }
+    });
+  </script>
+</body>
+</html>
