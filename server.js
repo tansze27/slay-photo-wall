@@ -16,18 +16,16 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// 读取/保存留言数据
-function loadComments() {
+// 读取/保存数据（留言与点赞数）
+function loadData() {
   if (fs.existsSync(dataFile)) {
     try { return JSON.parse(fs.readFileSync(dataFile)); } catch(e) { return {}; }
   }
   return {};
 }
 
-function saveComment(filename, comment) {
-  const comments = loadComments();
-  comments[filename] = comment;
-  fs.writeFileSync(dataFile, JSON.stringify(comments, null, 2));
+function saveData(data) {
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 }
 
 const storage = multer.diskStorage({
@@ -44,37 +42,65 @@ const upload = multer({ storage: storage });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// 获取所有照片数据（含点赞量与时间）
 app.get('/api/photos', (req, res) => {
   fs.readdir(uploadDir, (err, files) => {
     if (err) return res.json([]);
-    const comments = loadComments();
+    const db = loadData();
     
     const photos = files
       .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
-      .map(file => ({
-        url: `/uploads/${file}`,
-        comment: comments[file] || '',
-        time: fs.statSync(path.join(uploadDir, file)).mtimeMs
-      }))
+      .map(file => {
+        const itemData = db[file] || {};
+        const stat = fs.statSync(path.join(uploadDir, file));
+        return {
+          url: `/uploads/${file}`,
+          comment: itemData.comment || '',
+          likes: itemData.likes || 0,
+          time: stat.mtimeMs,
+          formattedTime: new Date(stat.mtimeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+      })
       .sort((a, b) => b.time - a.time);
 
     res.json(photos);
   });
 });
 
+// 点赞接口
+app.post('/api/photos/like', (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ success: false });
+
+  const filename = path.basename(url);
+  const db = loadData();
+
+  if (!db[filename]) db[filename] = {};
+  db[filename].likes = (db[filename].likes || 0) + 1;
+
+  saveData(db);
+
+  // 实时向所有人与大屏广播最新点赞数据
+  io.emit('like-updated', { url, likes: db[filename].likes });
+  res.json({ success: true, likes: db[filename].likes });
+});
+
+// 上传接口
 app.post('/upload', upload.single('photo'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false });
 
     const comment = req.body.comment || '';
-    if (comment) {
-      saveComment(req.file.filename, comment);
-    }
+    const db = loadData();
+    db[req.file.filename] = { comment, likes: 0 };
+    saveData(db);
 
     const photoData = {
       url: `/uploads/${req.file.filename}`,
       comment: comment,
-      time: Date.now()
+      likes: 0,
+      time: Date.now(),
+      formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     io.emit('new-photo', photoData);
@@ -84,28 +110,28 @@ app.post('/upload', upload.single('photo'), (req, res) => {
   }
 });
 
-// API：删除照片接口（带密码验证）
+// 带密码删除接口
 app.post('/api/photos/delete', (req, res) => {
   const { url, password } = req.body;
-
-  // 设置你的管理员密码（可在此随意修改）
-  const ADMIN_PASSWORD = 'Slayadmin';
+  const ADMIN_PASSWORD = '1234'; // 默认密码
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ success: false, message: '密码错误，无权删除！' });
   }
 
-  if (!url) return res.status(400).json({ success: false, message: '无效的照片路径' });
+  if (!url) return res.status(400).json({ success: false, message: '无效路径' });
 
   const filename = path.basename(url);
   const filePath = path.join(uploadDir, filename);
 
   fs.unlink(filePath, (err) => {
-    if (err) {
-      console.error('删除文件失败:', err);
-      return res.status(500).json({ success: false, message: '删除文件失败' });
-    }
-    // 即时通知所有人与大屏移除该照片
+    if (err) return res.status(500).json({ success: false });
+    
+    // 清除 json 记录
+    const db = loadData();
+    delete db[filename];
+    saveData(db);
+
     io.emit('photo-deleted', url);
     res.json({ success: true });
   });
