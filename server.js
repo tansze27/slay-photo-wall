@@ -4,137 +4,125 @@ const { Server } = require('socket.io');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-const dataFile = path.join(__dirname, 'photos_data.json');
+// 配置 Cloudinary（从环境变量读取）
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// 设置上传存储为 Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'slay-photo-wall',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp']
+  }
+});
+
+const upload = multer({ storage: storage });
+
+const dataFile = path.join(__dirname, 'photos_data.json');
 
 function loadData() {
   if (fs.existsSync(dataFile)) {
-    try { return JSON.parse(fs.readFileSync(dataFile)); } catch(e) { return {}; }
+    try { return JSON.parse(fs.readFileSync(dataFile)); } catch(e) { return []; }
   }
-  return {};
+  return [];
 }
 
 function saveData(data) {
   fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'SLAY-' + uniqueSuffix + ext);
-  }
-});
-
-const upload = multer({ storage: storage });
-
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // 获取所有照片
 app.get('/api/photos', (req, res) => {
-  fs.readdir(uploadDir, (err, files) => {
-    if (err) return res.json([]);
-    const db = loadData();
-    
-    const photos = files
-      .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
-      .map(file => {
-        const itemData = db[file] || {};
-        const uploadTimestamp = itemData.timestamp || fs.statSync(path.join(uploadDir, file)).mtimeMs;
-        
-        return {
-          url: `/uploads/${file}`,
-          comment: itemData.comment || '',
-          likes: itemData.likes || 0,
-          time: uploadTimestamp,
-          formattedTime: new Date(uploadTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-      })
-      .sort((a, b) => b.time - a.time);
-
-    res.json(photos);
-  });
+  const photos = loadData();
+  res.json(photos.sort((a, b) => b.time - a.time));
 });
 
+// 点赞
 app.post('/api/photos/like', (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ success: false });
 
-  const filename = path.basename(url);
-  const db = loadData();
+  const photos = loadData();
+  const photo = photos.find(p => p.url === url);
 
-  if (!db[filename]) db[filename] = {};
-  db[filename].likes = (db[filename].likes || 0) + 1;
+  if (photo) {
+    photo.likes = (photo.likes || 0) + 1;
+    saveData(photos);
+    io.emit('like-updated', { url, likes: photo.likes });
+    return res.json({ success: true, likes: photo.likes });
+  }
 
-  saveData(db);
-  io.emit('like-updated', { url, likes: db[filename].likes });
-  res.json({ success: true, likes: db[filename].likes });
+  res.status(404).json({ success: false });
 });
 
+// 上传照片到云端
 app.post('/upload', upload.single('photo'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false });
 
     const comment = req.body.comment || '';
     const now = Date.now();
-    const db = loadData();
-    
-    db[req.file.filename] = { 
-      comment, 
-      likes: 0,
-      timestamp: now 
-    };
-    saveData(db);
+    const photos = loadData();
 
     const photoData = {
-      url: `/uploads/${req.file.filename}`,
+      url: req.file.path, // Cloudinary 云端图片 URL
+      public_id: req.file.filename,
       comment: comment,
       likes: 0,
       time: now,
       formattedTime: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
+    photos.unshift(photoData);
+    saveData(photos);
+
     io.emit('new-photo', photoData);
     res.json({ success: true, photo: photoData });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false });
   }
 });
 
-app.post('/api/photos/delete', (req, res) => {
+// 删除照片（同时从云端和数据表中移除）
+app.post('/api/photos/delete', async (req, res) => {
   const { url, password } = req.body;
   const ADMIN_PASSWORD = '1234';
 
   if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ success: false, message: '密码错误，无权删除！' });
+    return res.status(401).json({ success: false, message: '密码错误！' });
   }
 
-  if (!url) return res.status(400).json({ success: false, message: '无效路径' });
+  let photos = loadData();
+  const targetPhoto = photos.find(p => p.url === url);
 
-  const filename = path.basename(url);
-  const filePath = path.join(uploadDir, filename);
+  if (targetPhoto && targetPhoto.public_id) {
+    try {
+      await cloudinary.uploader.destroy(targetPhoto.public_id);
+    } catch (e) {
+      console.error('Cloudinary delete error:', e);
+    }
+  }
 
-  fs.unlink(filePath, (err) => {
-    if (err) return res.status(500).json({ success: false });
-    
-    const db = loadData();
-    delete db[filename];
-    saveData(db);
+  photos = photos.filter(p => p.url !== url);
+  saveData(photos);
 
-    io.emit('photo-deleted', url);
-    res.json({ success: true });
-  });
+  io.emit('photo-deleted', url);
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;
