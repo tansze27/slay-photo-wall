@@ -7,23 +7,88 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0a0a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; min-height: 100vh; }
     
-    header { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 30px; padding-bottom: 15px; border-bottom: 1px solid #222; }
-    .brand { font-size: 20px; font-weight: 800; color: #800020; text-decoration: none; }
-    .back-btn { color: #aaa; text-decoration: none; font-size: 14px; border: 1px solid #333; padding: 6px 14px; border-radius: 20px; }
+    /* 背景改为米白色 */
+    body { 
+      background: #fdfbf7; 
+      color: #1d1d1f; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      padding: 20px; 
+      min-height: 100vh; 
+    }
+    
+    header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      max-width: 1200px; 
+      margin: 0 auto 30px; 
+      padding-bottom: 15px; 
+      border-bottom: 1px solid #e5e0d8; 
+    }
 
-    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; max-width: 1200px; margin: 0 auto; }
+    .brand { 
+      font-size: 20px; 
+      font-weight: 800; 
+      color: #800020; 
+      text-decoration: none; 
+      letter-spacing: 1px;
+    }
+
+    .back-btn { 
+      color: #555; 
+      text-decoration: none; 
+      font-size: 14px; 
+      border: 1px solid #dcd6cd; 
+      padding: 6px 16px; 
+      border-radius: 20px; 
+      background: #fff;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      border-color: #800020;
+      color: #800020;
+    }
+
+    .gallery-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+      gap: 16px; 
+      max-width: 1200px; 
+      margin: 0 auto; 
+    }
     
-    .card-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #1a1a1a; cursor: pointer; border: 1px solid #222; }
-    .card-item img { width: 100%; height: 100%; object-fit: cover; }
+    .card-item { 
+      position: relative; 
+      aspect-ratio: 1; 
+      border-radius: 16px; 
+      overflow: hidden; 
+      background: #fff; 
+      cursor: pointer; 
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      border: 1px solid #f0eae1;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-item img { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+    }
     
     /* 爱心点赞按钮 */
     .like-badge {
       position: absolute;
       bottom: 8px;
       right: 8px;
-      background: rgba(0,0,0,0.65);
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(4px);
       color: #ff4757;
       padding: 4px 10px;
@@ -33,19 +98,56 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       z-index: 2;
     }
 
     /* 弹窗部分 */
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; padding: 20px; flex-direction: column; }
+    .modal { 
+      display: none; 
+      position: fixed; 
+      inset: 0; 
+      background: rgba(0, 0, 0, 0.85); 
+      backdrop-filter: blur(5px);
+      z-index: 1000; 
+      justify-content: center; 
+      align-items: center; 
+      padding: 20px; 
+      flex-direction: column; 
+    }
+
     .modal.active { display: flex; }
-    .modal-img { max-width: 90vw; max-height: 70vh; object-fit: contain; border-radius: 12px; }
-    .modal-actions { margin-top: 20px; display: flex; gap: 15px; align-items: center; }
-    .btn-action { padding: 10px 20px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
+
+    .modal-img { 
+      max-width: 90vw; 
+      max-height: 70vh; 
+      object-fit: contain; 
+      border-radius: 12px; 
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .modal-actions { 
+      margin-top: 20px; 
+      display: flex; 
+      gap: 15px; 
+      align-items: center; 
+    }
+
+    .btn-action { 
+      padding: 10px 20px; 
+      border-radius: 20px; 
+      border: none; 
+      font-weight: bold; 
+      cursor: pointer; 
+      font-size: 14px; 
+      transition: transform 0.1s;
+    }
+
+    .btn-action:active { transform: scale(0.95); }
+
     .btn-like { background: #ff4757; color: #fff; }
-    .btn-delete { background: #333; color: #ff4d4d; }
-    .btn-close { background: #222; color: #fff; }
+    .btn-delete { background: rgba(255, 255, 255, 0.2); color: #ff6b6b; border: 1px solid rgba(255,255,255,0.3); }
+    .btn-close { background: #fff; color: #1d1d1f; }
   </style>
 </head>
 <body>
